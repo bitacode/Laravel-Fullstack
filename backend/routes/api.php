@@ -60,6 +60,8 @@ Route::middleware('api.key')->group(function () {
 
     Route::post('/booking-transaction', [BookingTransactionController::class, 'store']);
     Route::post('/check-booking', [BookingTransactionController::class, 'booking_details']);
+
+    Route::post('/check-voucher', [VoucherController::class, 'voucher_details']);
     
     Route::post('/send-message', [MessageController::class, 'store']);
     
