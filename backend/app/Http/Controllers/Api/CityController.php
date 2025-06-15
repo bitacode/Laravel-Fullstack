@@ -16,6 +16,8 @@ class CityController extends Controller
         return response()->json([
             'data' => CityResource::collection($cities),
             'next_page_url' => $cities->nextPageUrl(),
+            'current_page' => $cities->currentPage(),
+            'last_page' => $cities->lastPage()
         ]);
     }
 

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import apiClient from '../service/apiClient';
 import { Link } from 'react-router';
 import OfficeCard from '../components/OfficeCard';
+import LoadingDots from '../components/LoadingDots';
 import OfficeWrapperLoading from '../components/OfficeWrapperLoading';
 import Empty from '../components/Empty';
 import ServerError from '../pages/ServerError';
@@ -14,64 +15,75 @@ const BrowseOfficeWrapper = () => {
     const [error, setError] = useState(null);
     const [nextPageUrl, setNextPageUrl] = useState('/offices');
     const [isFetching, setIsFetching] = useState(false);
+    const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-    const loadOffices = useCallback(() => {
+    const loadOffices = useCallback(async () => {
         if (!nextPageUrl || isFetching) return;
 
         setIsFetching(true);
+        if (!initialLoadDone) setLoading(true);
 
-        apiClient
-            .get(nextPageUrl)
-            .then((response) => {
-                setOffices(prevOffices => [...prevOffices, ...response.data.data]);
-                setNextPageUrl(response.data.next_page_url);
-                setIsFetching(false);
+        try {
+            const response = await apiClient.get(nextPageUrl);
+            setOffices(prev => {
+                const newOffices = response.data.data.filter(
+                    newOffice => !prev.some(office => office.id === newOffice.id)
+                );
+                return [...prev, ...newOffices];
+            });
+            setNextPageUrl(response.data.next_page_url || null);
+            setInitialLoadDone(true);
+        } catch (error) {
+            if (error.response?.status === 500) {
+                setError({
+                    type: 'server',
+                    message: error
+                });
                 setLoading(false);
-            })
-            .catch((error) => {
-                if (error.response?.status === 500) {
-                    setError({
-                        type: 'server',
-                        message: error
-                    });
-                    setLoading(false);
-                    setIsFetching(false);
-                } if (error.response?.status === 404) {
-                    setError({
-                        type: 'not-found',
-                        message: error
-                    });
-                    setLoading(false);
-                    setIsFetching(false);
-                } else {
-                    setError({
-                        type: 'other',
-                        message: error
-                    });
-                    setLoading(false);
-                    setIsFetching(false);
-                }
-            })
-    }, [nextPageUrl, isFetching]);
+                setIsFetching(false);
+            } if (error.response?.status === 404) {
+                setError({
+                    type: 'not-found',
+                    message: error
+                });
+                setLoading(false);
+                setIsFetching(false);
+            } else {
+                setError({
+                    type: 'other',
+                    message: error
+                });
+                setLoading(false);
+                setIsFetching(false);
+            }
+        } finally {
+            setIsFetching(false);
+            setLoading(false);
+        }
+
+    }, [nextPageUrl, isFetching, initialLoadDone])
 
     useEffect(() => {
-        if (offices.length === 0) {
+        if (!initialLoadDone) {
             loadOffices();
         }
-    }, [loadOffices, offices.length])
-
+    }, [loadOffices, initialLoadDone])
+    
     useEffect(() => {
-        const observer = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && nextPageUrl) {
+        const handleScroll = () => {
+            if (
+                window.innerHeight + window.scrollY >=
+                document.body.offsetHeight - 500 &&
+                !isFetching &&
+                nextPageUrl
+            ) {
                 loadOffices();
             }
-        }, { threshold: 1.0 });
+        }
 
-        const trigger = document.getElementById('loadMoreTrigger');
-        if (trigger) observer.observe(trigger);
-
-        return () => observer.disconnect();
-    }, [nextPageUrl, loadOffices])
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [loadOffices, nextPageUrl, isFetching])
 
     if (loading) {
         return <OfficeWrapperLoading />
@@ -101,7 +113,7 @@ const BrowseOfficeWrapper = () => {
                     ))}
                 </div>
             }
-            <div className='hidden' id='loadMoreTrigger' />
+            {isFetching && <LoadingDots />}
         </section>
     )
 }

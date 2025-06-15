@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import Navbar from '../components/Navbar';
 import apiClient from '../service/apiClient';
 import Loading from '../components/Loading';
+import LoadingDots from '../components/LoadingDots';
 import CityCard from '../components/CityCard';
 import { Link } from 'react-router';
 import Empty from '../components/Empty';
@@ -13,36 +14,77 @@ const Cities = () => {
     const [cities, setCities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [nextPageUrl, setNextPageUrl] = useState('/cities');
+    const [isFetching, setIsFetching] = useState(false);
+    const [initialLoadDone, setInitialLoadDone] = useState(false);
+    
+    const loadCities = useCallback(async () => {
+        if (!nextPageUrl || isFetching) return;
+
+        setIsFetching(true);
+        if (!initialLoadDone) setLoading(true);
+
+        try {
+            const response = await apiClient.get(nextPageUrl);
+            setCities(prev => {
+                const newCities = response.data.data.filter(
+                    newCity => !prev.some(city => city.id === newCity.id)
+                );
+                return [...prev, ...newCities];
+            });
+            setNextPageUrl(response.data.next_page_url || null);
+            setInitialLoadDone(true);
+        } catch (error) {
+            if (error.response?.status === 500) {
+                setError({
+                    type: 'server',
+                    message: error
+                });
+                setLoading(false);
+                setIsFetching(false);
+            } if (error.response?.status === 404) {
+                setError({
+                    type: 'not-found',
+                    message: error
+                });
+                setLoading(false);
+                setIsFetching(false);
+            } else {
+                setError({
+                    type: 'other',
+                    message: error
+                });
+                setLoading(false);
+                setIsFetching(false);
+            }
+        } finally {
+            setIsFetching(false);
+            setLoading(false);
+        }
+
+    }, [nextPageUrl, isFetching, initialLoadDone])
 
     useEffect(() => {
-        apiClient
-            .get('/cities')
-            .then((response) => {
-                setCities(response.data.data);
-                setLoading(false);
-            })
-            .catch((error) => {
-                if (error.response?.status === 500) {
-                    setError({
-                        type: 'server',
-                        message: error
-                    });
-                    setLoading(false);
-                } if (error.response?.status === 404) {
-                    setError({
-                        type: 'not-found',
-                        message: error
-                    });
-                    setLoading(false);
-                } else {
-                    setError({
-                        type: 'other',
-                        message: error
-                    });
-                    setLoading(false);
-                }
-            })
-    }, []);
+        if (!initialLoadDone) {
+            loadCities();
+        }
+    }, [loadCities, initialLoadDone])
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (
+                window.innerHeight + window.scrollY >=
+                document.body.offsetHeight - 100 &&
+                !isFetching &&
+                nextPageUrl
+            ) {
+                loadCities();
+            }
+        }
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [loadCities, nextPageUrl, isFetching])
 
     if (loading) {
         return <Loading />;
@@ -110,6 +152,7 @@ const Cities = () => {
                     </section>
                 </>
             }
+            {isFetching && <LoadingDots />}
         </>
     )
 }

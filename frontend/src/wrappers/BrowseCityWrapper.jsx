@@ -15,55 +15,81 @@ const BrowseCityWrapper = () => {
     const [error, setError] = useState(null);
     const [nextPageUrl, setNextPageUrl] = useState('/cities');
     const [isFetching, setIsFetching] = useState(false);
+    const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-    const loadCities = useCallback(() => {
+    const loadCities = useCallback(async () => {
         if (!nextPageUrl || isFetching) return;
 
         setIsFetching(true);
+        if (!initialLoadDone) setLoading(true);
 
-        apiClient
-            .get(nextPageUrl)
-            .then((response) => {
-                setCities(prevCities => [...prevCities, ...response.data.data]);
-                setNextPageUrl(response.data.next_page_url);
-                setIsFetching(false);
+        try {
+            const response = await apiClient.get(nextPageUrl);
+            setCities(prev => {
+                const newCities = response.data.data.filter(
+                    newCity => !prev.some(city => city.id === newCity.id)
+                );
+                return [...prev, ...newCities];
+            });
+            setNextPageUrl(response.data.next_page_url || null);
+            setInitialLoadDone(true);
+        } catch (error) {
+            if (error.response?.status === 500) {
+                setError({
+                    type: 'server',
+                    message: error
+                });
                 setLoading(false);
-            })
-            .catch((error) => {
-                if (error.response?.status === 500) {
-                    setError({
-                        type: 'server',
-                        message: error
-                    });
-                    setLoading(false);
-                    setIsFetching(false);
-                } if (error.response?.status === 404) {
-                    setError({
-                        type: 'not-found',
-                        message: error
-                    });
-                    setLoading(false);
-                    setIsFetching(false);
-                } else {
-                    setError({
-                        type: 'other',
-                        message: error
-                    });
-                    setLoading(false);
-                    setIsFetching(false);
-                }
-            })
+                setIsFetching(false);
+            } if (error.response?.status === 404) {
+                setError({
+                    type: 'not-found',
+                    message: error
+                });
+                setLoading(false);
+                setIsFetching(false);
+            } else {
+                setError({
+                    type: 'other',
+                    message: error
+                });
+                setLoading(false);
+                setIsFetching(false);
+            }
+        } finally {
+            setIsFetching(false);
+            setLoading(false);
+        }
 
-    }, [nextPageUrl, isFetching])
+    }, [nextPageUrl, isFetching, initialLoadDone])
 
     useEffect(() => {
-        if (cities.length === 0) {
+        if (!initialLoadDone) {
             loadCities();
         }
-    }, [loadCities, cities.length])
+    }, [loadCities, initialLoadDone])
+    
+    useEffect(() => {
+        const handleScroll = () => {
+            if (
+                window.innerHeight + window.scrollY >=
+                document.body.offsetHeight - 500 &&
+                !isFetching &&
+                nextPageUrl
+            ) {
+                loadCities();
+            }
+        }
 
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [loadCities, nextPageUrl, isFetching])
     
     if (loading) {
+        return <CityWrapperLoading />
+    }
+
+    if (isFetching) {
         return <CityWrapperLoading />
     }
 

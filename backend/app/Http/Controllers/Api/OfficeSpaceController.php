@@ -16,6 +16,8 @@ class OfficeSpaceController extends Controller
         return response()->json([
             'data' => OfficeSpaceResource::collection($officeSpaces),
             'next_page_url' => $officeSpaces->nextPageUrl(),
+            'current_page' => $officeSpaces->currentPage(),
+            'last_page' => $officeSpaces->lastPage()
         ]);
     }
 
