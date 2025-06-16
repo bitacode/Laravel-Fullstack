@@ -9,7 +9,7 @@ This is a showcase SaaS application built with:
 - 🧠 **Laravel** for the backend API and core application logic  
 - 🐘 **PhpMyAdmin** to manage the MySQL database  
 - 🛠️ **Filament** as the internal admin panel/dashboard  
-- ⚛️ **React + Vite** (cmiiw) for the frontend interface  
+- ⚛️ **React + Vite** for the frontend interface  
 - 💨 **Tailwind CSS** for utility-first styling  
 - 📡 **Axios** for HTTP communication between React and Laravel APIs  
 - ✅ **Zod** for schema-based form validation on the frontend
