@@ -470,10 +470,15 @@ const BookOffice = () => {
                                 {calculatedPrice.toLocaleString('ID')}
                             </p>
                         </div>
-                        {voucher?.min_eligible_price &&
+                        {voucher?.min_eligible_price > 0 &&
                         
                             <span className='text-[12px]'>
                                 Not applicable for transactions of Rp {voucher?.min_eligible_price.toLocaleString('ID')} or below.
+                            </span>
+                        }
+                        {voucher?.min_eligible_price === 0 &&
+                            <span className='text-[12px]'>
+                                Applicable for all transactions.
                             </span>
                         }
                         <div className='relative rounded-xl p-[10px_20px] gap-[10px] bg-[#000929] text-white'>
