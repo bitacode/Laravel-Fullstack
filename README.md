@@ -32,6 +32,8 @@ To avoid losing this change:
 - Review or back up the file before running Composer
 - Or manually copy it back in after install
 
+This custom logic won't work if you don't import it as middleware in `backend/app/Providers/Filament/AdminPanelProvider.php`
+
 ## ▶️ End Result
 [![Watch the video](https://github.com/bitacode/images/blob/main/thumbnail-3.png)](https://youtu.be/_oKvcfmmaUA)
 
